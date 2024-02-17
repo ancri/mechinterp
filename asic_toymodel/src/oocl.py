@@ -209,7 +209,7 @@ if __name__ == "__main__":
     tokens = Tokens()
     transformer_config = default_transformer_config
     transformer_config.update(dict(
-        d_vocab=data_params.mod + 3,  # 3 special tokens: end, random, not-random
+        d_vocab=2 * data_params.mod + 4,  # originals, aliases, and 4 special tokens: end, random, not-random, define
     ))
     train_params = TrainParams()
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
-    for frac_held_out in [0.10, 0.25, 0.50, 0.75, 0.90]:
+    for frac_held_out in [0.10]:
         x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
             mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out,
         )

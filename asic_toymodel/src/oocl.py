@@ -12,6 +12,8 @@ total of 2 * mod + 4 tokens
 there are 2 phases of training:
 1. train on originals. save model model_original
 2. train on linkages + aliases. test unseen aliases
+
+TODO: give definitions in both orders (original, alias) and (alias, original)
 """
 
 
@@ -75,6 +77,17 @@ default_transformer_config = dict(
 )
 
 
+def loss_fn_linkages(logits, tokens):
+    # only compare the z position i.e. index 4: [T/F | x | y | = | z]
+    # logit shape: [batch, pos, vocab]
+    # token shape: [batch, pos]
+    logits = logits[:, 3].unsqueeze(1)
+    tokens = tokens[:, 4].unsqueeze(1)
+    log_probs = logits.log_softmax(-1)
+    correct_log_probs = log_probs.gather(-1, tokens[..., None])[..., 0]
+    return -correct_log_probs.mean()
+
+
 def make_tbl_mask(mod=17, method="sum", frac_held_out=0.05):
     tbl_vv = torch.empty((mod, mod), dtype=torch.long)
     nv = mod
@@ -130,7 +143,7 @@ def make_data_linkage(batch_size, mod):
         # each datapoint looks like: d | d | x | = | y
         # where d is define tag, x and y are from the original and aliases groups
         i = torch.randint(0, nv, (nb,))
-        x_bt = torch.empty((nv, 5), dtype=torch.long)
+        x_bt = torch.empty((nb, 5), dtype=torch.long)
         x_bt[:, :2] = 2 * nv + Tokens.define  # define, define
         x_bt[:, 2] = i                        # x
         x_bt[:, 3] = 2 * nv + Tokens.equal    # equal sign
@@ -138,14 +151,13 @@ def make_data_linkage(batch_size, mod):
         yield x_bt
 
 
-def train(model, train_loader, valid_loader, nsteps, lr, betas, max_grad_norm, wd, **kwargs):
+def train_phase1(model, train_loader, valid_loader, nsteps, lr, betas, max_grad_norm, wd, **kwargs):
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=betas, weight_decay=wd)
     warm_up_steps = kwargs.get("warm_up_steps", 1000)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
     losses = []
     # for epoch in tqdm(range(nsteps_true), desc="Epoch Tru"):
-    logging.info("True data")
     for epoch in range(nsteps):
         # tokens = next(train_loader_tru)
         tokens = next(train_loader)
@@ -199,6 +211,97 @@ def train(model, train_loader, valid_loader, nsteps, lr, betas, max_grad_norm, w
             model.train()
 
 
+def train_phase2(
+        model, 
+        train_loader_p1, train_loader_p2, 
+        valid_loader_p1, valid_loader_p2, 
+        loader_linkages, 
+        nsteps, lr, betas, max_grad_norm, wd, 
+        k_p1=1, k_p2=1, k_ln=1, 
+        **kwargs,
+        ):
+    model.train()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, betas=betas, weight_decay=wd)
+    warm_up_steps = kwargs.get("warm_up_steps", 1000)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
+    losses_binop_p1, losses_binop_p2, losses_linkages = [], [], []
+    # for epoch in tqdm(range(nsteps_true), desc="Epoch Tru"):
+    logging.info("True data")
+    for epoch in range(nsteps):
+        # tokens = next(train_loader_tru)
+        tokens_binop_p1 = next(train_loader_p1).to(DEVICE)
+        tokens_binop_p2 = next(train_loader_p2).to(DEVICE)
+        tokens_linkages = next(loader_linkages).to(DEVICE)
+        logits_binop_p1 = model(tokens_binop_p1)
+        logits_binop_p2 = model(tokens_binop_p2)
+        logits_linkages = model(tokens_linkages)
+        loss_binop_p1 = loss_fn_z(logits_binop_p1, tokens_binop_p1)
+        loss_binop_p2 = loss_fn_z(logits_binop_p2, tokens_binop_p2)
+        loss_linkages = loss_fn_linkages(logits_linkages, tokens_linkages)
+        loss = k_p1 * loss_binop_p1 + k_p2 * loss_binop_p2 + k_ln * loss_linkages
+        loss.backward()
+        if max_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+        optimizer.step()
+        optimizer.zero_grad()
+        scheduler.step()
+        losses_binop_p1.append(loss_binop_p1.item())
+        losses_binop_p2.append(loss_binop_p2.item())
+        losses_linkages.append(loss_linkages.item())
+        step_epoch = kwargs.get("n_steps_epoch", 100)
+        if (epoch > 0) & (epoch % step_epoch == 0):
+            # validation is unseen data
+            losses_binop_p1 = losses_binop_p1[-step_epoch:]
+            losses_binop_p2 = losses_binop_p2[-step_epoch:]
+            losses_linkages = losses_linkages[-step_epoch:]
+            train_loss_binop_p1 = np.mean(losses_binop_p1)
+            train_loss_binop_p2 = np.mean(losses_binop_p2)
+            train_loss_linkages = np.mean(losses_linkages)
+            model.eval()
+            with torch.no_grad():
+                # logging.info(tokens)
+                tokens_binop_p1 = next(valid_loader_p1).to(DEVICE)
+                tokens_binop_p2 = next(valid_loader_p2).to(DEVICE)
+                # tokens_linkages = next(loader_linkages).to(DEVICE)
+                logits_p1 = model(tokens_binop_p1)
+                logits_p2 = model(tokens_binop_p2)
+                loss_binop_p1 = loss_fn_z(logits_p1, tokens_binop_p1,)
+                loss_binop_p2 = loss_fn_z(logits_p2, tokens_binop_p2,)
+                # loss_linkages = loss_fn_linkages(logits_linkages, tokens_linkages)
+                valid_loss_binop_p1 = loss_binop_p1.item()
+                valid_loss_binop_p2 = loss_binop_p2.item()
+                lr_curr = scheduler.get_last_lr()[0]
+                logging.info(
+                    f"Epoch: {epoch}, "
+                    f"train_loss_binop_p1: {train_loss_binop_p1:.5f}, "
+                    f"train_loss_binop_p2: {train_loss_binop_p2:.5f}, "
+                    f"train_loss_linkages: {train_loss_linkages:.5f}, "
+                    f"valid_loss_binop_p1: {valid_loss_binop_p1:.5f}, "
+                    f"valid_loss_binop_p2: {valid_loss_binop_p2:.5f}, "
+                    f"lr: {lr_curr:.5f}",
+                )
+                wandb.log({
+                    "train/loss_binop_p1": train_loss_binop_p1,
+                    "train/loss_binop_p2": train_loss_binop_p2,
+                    "train/loss_linkages": train_loss_linkages,
+                    "valid/loss_binop_p1": valid_loss_binop_p1,
+                    "valid/loss_binop_p2": valid_loss_binop_p2,
+                    "learning_rate": lr_curr,
+                })
+
+            # potentially save model
+            save_every = kwargs.get("save_every", None)
+            model_name = kwargs.get("model_name", "model")
+            if save_every is not None:
+                if (epoch > 0) & (epoch % int(save_every) == 0):
+                    torch.save(model.state_dict(), os.path.join(dir_models, f"{model_name}_{epoch:010}.pt"))
+            early_stop_valid_loss = kwargs.get("early_stop_valid_loss", None)
+            # if early_stop_valid_loss is not None and valid_loss < early_stop_valid_loss:
+            #     logging.info(f"Early stopping due to valid loss limit of {early_stop_valid_loss} at epoch {epoch}")
+            #     break
+            model.train()
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     DEVICE = get_device()
@@ -209,7 +312,7 @@ if __name__ == "__main__":
     tokens = Tokens()
     transformer_config = default_transformer_config
     transformer_config.update(dict(
-        d_vocab=data_params.mod + 3,  # 3 special tokens: end, random, not-random
+        d_vocab=2* data_params.mod + 4,  # 4 special tokens: end, random, not-random, define
     ))
     train_params = TrainParams()
 
@@ -223,10 +326,15 @@ if __name__ == "__main__":
 
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
-    for frac_held_out in [0.10, 0.25, 0.50, 0.75, 0.90]:
+    frac_held_out_phase1 = 0.10
+    for frac_held_out_phase2 in [0.25]:
         x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
-            mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out,
+            mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase1,
         )
+        x_vv, y_vv, z_vv, train2_vv, valid2_vv = make_tbl_mask(
+            mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase2,
+        )
+
         logging.info(
             f"dataset has "
             f"{train_vv.sum().item()} training examples and "
@@ -235,11 +343,17 @@ if __name__ == "__main__":
         model = HookedTransformer(cfg)
         name = f"oocl_{data_params.operation}_{data_params.mod}_{model.cfg.n_layers}_{round(frac_held_out, 2)}"
         logging.info(f"project named: {name}")
-        train_loader = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
-        valid_loader = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
+        train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
+        valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
+
+        train_loader_phase2 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train2_vv)
+        valid_loader_phase2 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train2_vv)
+
+        loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
+
         wandb.init(
             # set the wandb project where this run will be logged
-            project="grokking",
+            project="oocl",
             entity=os.getenv("WANDB_ENTITY"),
             name=name,
             # track hyperparameters and run metadata
@@ -250,13 +364,26 @@ if __name__ == "__main__":
             }
         )
         ts_start_training = time.time()
+        # try:
+        #     train_phase1(
+        #         model, train_loader_phase1, valid_loader_phase1, train_params.n_steps, model_name=f"{name}_phase1",
+        #         **asdict(train_params), **asdict(data_params),
+        #     )
+        # except KeyboardInterrupt:
+        #     torch.save(model.state_dict(), os.path.join(dir_models, "phase1_interrupted.pt"))
+        #     #  do not wandb.finish() on purpose
+        #     raise KeyboardInterrupt
         try:
-            train(
-                model, train_loader, valid_loader, train_params.n_steps, model_name=name,
+            train_phase2(
+                model, 
+                train_loader_phase1, train_loader_phase2, 
+                valid_loader_phase1, valid_loader_phase2, 
+                loader_linkages, 
+                train_params.n_steps, model_name=f"{name}_phase2",
                 **asdict(train_params), **asdict(data_params),
             )
         except KeyboardInterrupt:
-            torch.save(model.state_dict(), os.path.join(dir_models, "interrupted.pt"))
+            torch.save(model.state_dict(), os.path.join(dir_models, "phase2_interrupted.pt"))
             #  do not wandb.finish() on purpose
             raise KeyboardInterrupt
         ts_finish_training = time.time()

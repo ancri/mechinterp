@@ -327,7 +327,7 @@ if __name__ == "__main__":
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
     frac_held_out_phase1 = 0.10
-    for frac_held_out_phase2 in [0.25]:
+    for frac_held_out_phase2 in [0.75]:
         x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
             mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase1,
         )
@@ -341,13 +341,16 @@ if __name__ == "__main__":
             f"{valid_vv.sum().item()} validation examples."
         )
         model = HookedTransformer(cfg)
-        name = f"oocl_{data_params.operation}_{data_params.mod}_{model.cfg.n_layers}_{round(frac_held_out_phase1, 2)}"
+        name = f"oocl_{data_params.operation}_{data_params.mod}_{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}"
         logging.info(f"project named: {name}")
         train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
         valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
 
-        train_loader_phase2 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train2_vv)
-        valid_loader_phase2 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train2_vv)
+        x2_vv = x_vv + data_params.mod
+        y2_vv = y_vv + data_params.mod
+        z2_vv = z_vv + data_params.mod
+        train_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, train2_vv)
+        valid_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, valid2_vv)
 
         loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
 

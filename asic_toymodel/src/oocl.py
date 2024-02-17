@@ -312,7 +312,7 @@ if __name__ == "__main__":
     tokens = Tokens()
     transformer_config = default_transformer_config
     transformer_config.update(dict(
-        d_vocab=2* data_params.mod + 4,  # 4 special tokens: end, random, not-random, define
+        d_vocab=2 * data_params.mod + 4,  # originals, aliases, and 4 special tokens: end, random, not-random, define
     ))
     train_params = TrainParams()
 
@@ -341,7 +341,7 @@ if __name__ == "__main__":
             f"{valid_vv.sum().item()} validation examples."
         )
         model = HookedTransformer(cfg)
-        name = f"oocl_{data_params.operation}_{data_params.mod}_{model.cfg.n_layers}_{round(frac_held_out, 2)}"
+        name = f"oocl_{data_params.operation}_{data_params.mod}_{model.cfg.n_layers}_{round(frac_held_out_phase1, 2)}"
         logging.info(f"project named: {name}")
         train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
         valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)

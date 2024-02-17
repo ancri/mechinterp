@@ -226,7 +226,6 @@ def train_phase2(
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
     losses_binop_p1, losses_binop_p2, losses_linkages = [], [], []
     # for epoch in tqdm(range(nsteps_true), desc="Epoch Tru"):
-    logging.info("True data")
     for epoch in range(nsteps):
         # tokens = next(train_loader_tru)
         tokens_binop_p1 = next(train_loader_p1).to(DEVICE)

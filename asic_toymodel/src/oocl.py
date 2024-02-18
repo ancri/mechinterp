@@ -227,6 +227,7 @@ def train_phase2(
     warm_up_steps = kwargs.get("warm_up_steps", 1000)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
     losses_binop_p1, losses_binop_p2, losses_linkages = [], [], []
+
     k_p1 = kwargs.get("k_p1")
     k_p2 = kwargs.get("k_p2")
     k_ln = kwargs.get("k_ln")

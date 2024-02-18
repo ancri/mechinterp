@@ -61,6 +61,9 @@ class TrainParams:
     save_every: int = 1000  # save every this many steps
     early_stop_valid_loss: float = 1e-5
     n_steps_epoch: int = 100  # validate / log once every this many steps
+    k_p1: float = 1.0
+    k_p2: float = 1.0
+    k_ln: float = 1.0
 
 
 default_transformer_config = dict(
@@ -216,8 +219,7 @@ def train_phase2(
         train_loader_p1, train_loader_p2, 
         valid_loader_p1, valid_loader_p2, 
         loader_linkages, 
-        nsteps, lr, betas, max_grad_norm, wd, 
-        k_p1=1, k_p2=1, k_ln=1, 
+        nsteps, lr, betas, max_grad_norm, wd,
         **kwargs,
         ):
     model.train()
@@ -225,8 +227,9 @@ def train_phase2(
     warm_up_steps = kwargs.get("warm_up_steps", 1000)
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
     losses_binop_p1, losses_binop_p2, losses_linkages = [], [], []
-    # for epoch in tqdm(range(nsteps_true), desc="Epoch Tru"):
-    logging.info("True data")
+    k_p1 = kwargs.get("k_p1")
+    k_p2 = kwargs.get("k_p2")
+    k_ln = kwargs.get("k_ln")
     for epoch in range(nsteps):
         # tokens = next(train_loader_tru)
         tokens_binop_p1 = next(train_loader_p1).to(DEVICE)
@@ -341,8 +344,12 @@ if __name__ == "__main__":
             f"{valid_vv.sum().item()} validation examples."
         )
         model = HookedTransformer(cfg)
-        name = f"oocl_{data_params.operation}_{data_params.mod}_{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}"
-        logging.info(f"project named: {name}")
+        name = (
+            f"oocl_{data_params.operation}_{data_params.mod}_"
+            f"{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}_"
+            f"{round(train_params.k_p1, 1)}_{round(train_params.k_p2, 1)}_{round(train_params.k_ln, 1)}"
+            )
+        logging.info(f"model / run named: {name}")
         train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
         valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
 

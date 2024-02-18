@@ -52,8 +52,8 @@ class Tokens:
 @dataclass
 class TrainParams:
     n_steps: int = int(1e8)
-    batch_size: int = 2**7
-    lr: float = 1e-3
+    batch_size: int = 2**8
+    lr: float = 1.4e-3
     wd: float = 0.1
     betas: tuple = (0.9, 0.98)
     max_grad_norm: float = 1.0
@@ -330,8 +330,20 @@ if __name__ == "__main__":
 
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
-    frac_held_out_phase1 = 0.10
-    for frac_held_out_phase2 in [0.75]:
+    for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
+        (0.10, 0.75, 1.0, 1.0, 1.0),
+        (0.10, 0.90, 1.0, 1.0, 1.0),
+        (0.10, 0.90, 1.0, 1.0, 0.0),
+        (0.80, 0.80, 1.0, 0.0, 0.0),
+        (0.80, 0.80, 1.0, 1.0, 1.0),
+        (0.90, 0.90, 1.0, 0.0, 0.0),
+        (0.90, 0.90, 1.0, 1.0, 1.0),
+        (0.90, 0.90, 1.0, 1.0, 0.0),
+        ]:
+        train_params.k_p1 = k_p1
+        train_params.k_p2 = k_p2
+        train_params.k_ln = k_ln
+
         x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
             mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase1,
         )

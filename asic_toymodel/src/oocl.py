@@ -51,7 +51,7 @@ class Tokens:
 
 @dataclass
 class TrainParams:
-    n_steps: int = int(1e8)
+    n_steps: int = int(3e3)
     batch_size: int = 2**8
     lr: float = 1.4e-3
     wd: float = 0.1

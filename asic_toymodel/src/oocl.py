@@ -331,7 +331,7 @@ if __name__ == "__main__":
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
     for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
-        (0.10, 0.75, 1.0, 1.0, 1.0),
+        # (0.10, 0.75, 1.0, 1.0, 1.0),
         (0.10, 0.90, 1.0, 1.0, 1.0),
         (0.10, 0.90, 1.0, 1.0, 0.0),
         (0.80, 0.80, 1.0, 0.0, 0.0),

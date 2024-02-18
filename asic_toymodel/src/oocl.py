@@ -146,11 +146,12 @@ def make_data_linkage(batch_size, mod):
         # each datapoint looks like: d | d | x | = | y
         # where d is define tag, x and y are from the original and aliases groups
         i = torch.randint(0, nv, (nb,))
+        g = torch.randint(0, 2, (nb,))
         x_bt = torch.empty((nb, 5), dtype=torch.long)
-        x_bt[:, :2] = 2 * nv + Tokens.define  # define, define
-        x_bt[:, 2] = i                        # x
-        x_bt[:, 3] = 2 * nv + Tokens.equal    # equal sign
-        x_bt[:, 4] = nv + i                   # y
+        x_bt[:,:2] = 2 * nv + Tokens.define  # define, define
+        x_bt[:, 2] = g * nv + i              # x
+        x_bt[:, 3] = 2 * nv + Tokens.equal   # equal sign
+        x_bt[:, 4] = (1 - g) * nv + i        # y
         yield x_bt
 
 

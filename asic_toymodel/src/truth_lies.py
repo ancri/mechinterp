@@ -132,11 +132,22 @@ def loss_fn_z(logits, tokens):
     # only compare the z position i.e. index 4: [T/F | x | y | = | z]
     # logit shape: [batch, pos, vocab]
     # token shape: [batch, pos]
-    logits = logits[:, 3].unsqueeze(1)
-    tokens = tokens[:, 4].unsqueeze(1)
+    logits = logits[:, 3].unsqueeze(1)  # prediction from 3rd position
+    tokens = tokens[:, 4].unsqueeze(1)  # actual value in 4th position
     log_probs = logits.log_softmax(-1)
     correct_log_probs = log_probs.gather(-1, tokens[..., None])[..., 0]
     return -correct_log_probs.mean()
+
+
+def get_acc(logits, tokens):
+    # logit shape: [batch, pos, vocab]
+    # token shape: [batch, pos]
+    logits = logits[:, 3].unsqueeze(1)  # prediction from 3rd position
+    tokens = tokens[:, 4].unsqueeze(1)  # actual value in 4th position
+    predicted_tokens = logits.argmax(-1)
+    n_correct = (predicted_tokens == tokens).sum().item()
+    n_total = tokens.shape[0]
+    return n_correct / n_total
 
 
 def train(model, train_loader_tru, train_loader_lie, valid_loader, nsteps_true, nsteps_lie, lr, betas, max_grad_norm, wd, **kwargs):

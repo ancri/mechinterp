@@ -12,8 +12,6 @@ total of 2 * mod + 4 tokens
 there are 2 phases of training:
 1. train on originals. save model model_original
 2. train on linkages + aliases. test unseen aliases
-
-TODO: give definitions in both orders (original, alias) and (alias, original)
 """
 
 
@@ -31,12 +29,12 @@ from pathlib import Path
 import itertools
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.truth_lies import get_device, loss_fn_z
+from src.truth_lies import get_device, loss_fn_z, get_acc
 
 
 @dataclass
 class DataParams:
-    mod: int = 109
+    mod: int = 997
     operation: str = "ssq"
 
 
@@ -51,14 +49,14 @@ class Tokens:
 
 @dataclass
 class TrainParams:
-    n_steps: int = int(3e3)
+    n_steps: int = 3e4
     batch_size: int = 2**8
     lr: float = 1.4e-3
     wd: float = 0.1
     betas: tuple = (0.9, 0.98)
     max_grad_norm: float = 1.0
     warm_up_steps: int = 1000
-    save_every: int = 1000  # save every this many steps
+    save_every: int = 10000  # save every this many steps
     early_stop_valid_loss: float = 1e-5
     n_steps_epoch: int = 100  # validate / log once every this many steps
     k_p1: float = 1.0
@@ -68,13 +66,13 @@ class TrainParams:
 
 default_transformer_config = dict(
     d_vocab=512,
-    n_layers=2,
+    n_layers=2,  # first layer could learn to do the replacement, 2nd layer could learn the lookup
     d_model=2**7,
     d_head=2**7,
     n_heads=4,
     d_mlp=2**8,
     n_ctx=5,
-    act_fn="relu",  # gelu?
+    act_fn="gelu",
     normalization_type="LN",
     attn_only=True,
 )
@@ -162,7 +160,7 @@ def train_phase1(model, train_loader, valid_loader, nsteps, lr, betas, max_grad_
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda i: min(i / warm_up_steps, 1.0))
     losses = []
     # for epoch in tqdm(range(nsteps_true), desc="Epoch Tru"):
-    for epoch in range(nsteps):
+    for epoch in range(int(nsteps)):
         # tokens = next(train_loader_tru)
         tokens = next(train_loader)
         tokens = tokens.to(DEVICE)
@@ -232,7 +230,7 @@ def train_phase2(
     k_p1 = kwargs.get("k_p1")
     k_p2 = kwargs.get("k_p2")
     k_ln = kwargs.get("k_ln")
-    for epoch in range(nsteps):
+    for epoch in range(int(nsteps)):
         # tokens = next(train_loader_tru)
         tokens_binop_p1 = next(train_loader_p1).to(DEVICE)
         tokens_binop_p2 = next(train_loader_p2).to(DEVICE)
@@ -272,9 +270,12 @@ def train_phase2(
                 logits_p2 = model(tokens_binop_p2)
                 loss_binop_p1 = loss_fn_z(logits_p1, tokens_binop_p1,)
                 loss_binop_p2 = loss_fn_z(logits_p2, tokens_binop_p2,)
+                accuracy_binop_p1 = get_acc(logits_p1, tokens_binop_p1)
+                accuracy_binop_p2 = get_acc(logits_p2, tokens_binop_p2)
                 # loss_linkages = loss_fn_linkages(logits_linkages, tokens_linkages)
                 valid_loss_binop_p1 = loss_binop_p1.item()
                 valid_loss_binop_p2 = loss_binop_p2.item()
+
                 lr_curr = scheduler.get_last_lr()[0]
                 logging.info(
                     f"Epoch: {epoch}, "
@@ -283,6 +284,8 @@ def train_phase2(
                     f"train_loss_linkages: {train_loss_linkages:.5f}, "
                     f"valid_loss_binop_p1: {valid_loss_binop_p1:.5f}, "
                     f"valid_loss_binop_p2: {valid_loss_binop_p2:.5f}, "
+                    f"valid_acc_binop_p1: {accuracy_binop_p1:.5f}, "
+                    f"valid_acc_binop_p2: {accuracy_binop_p2:.5f}, "
                     f"lr: {lr_curr:.5f}",
                 )
                 wandb.log({
@@ -291,6 +294,8 @@ def train_phase2(
                     "train/loss_linkages": train_loss_linkages,
                     "valid/loss_binop_p1": valid_loss_binop_p1,
                     "valid/loss_binop_p2": valid_loss_binop_p2,
+                    "valid/acc_binop_p1": accuracy_binop_p1,
+                    "valid/acc_binop_p2": accuracy_binop_p2,
                     "learning_rate": lr_curr,
                 })
 
@@ -333,13 +338,41 @@ if __name__ == "__main__":
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
     for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
         # (0.10, 0.75, 1.0, 1.0, 1.0),
-        (0.10, 0.90, 1.0, 1.0, 1.0),
-        (0.10, 0.90, 1.0, 1.0, 0.0),
+        # (0.10, 0.90, 1.0, 1.0, 1.0),
+        # (0.10, 0.90, 1.0, 1.0, 0.0),
+        # (0.80, 0.80, 1.0, 0.0, 0.0),
+        # (0.80, 0.80, 1.0, 1.0, 1.0),
+        # (0.80, 0.80, 1.0, 1.0, 0.0),
+
+        # (0.50, 0.50, 1.0, 0.0, 0.0),
+        # (0.50, 0.50, 1.0, 1.0, 1.0),
+
+        # (0.82, 0.82, 1.0, 1.0, 1.0),
+        # (0.82, 0.82, 1.0, 1.0, 0.0),
+        #
+        # (0.85, 0.85, 1.0, 1.0, 1.0),
+        # (0.85, 0.85, 1.0, 1.0, 0.0),
+        #
+        # (0.87, 0.87, 1.0, 1.0, 1.0),
+        # (0.87, 0.87, 1.0, 1.0, 0.0),
+        #
+        # (0.90, 0.90, 1.0, 1.0, 1.0),
+        # (0.90, 0.90, 1.0, 1.0, 0.0),
+
+        # (0.50, 0.50, 1.0, 0.0, 0.0),
+        # (0.50, 0.50, 1.0, 1.0, 1.0),
+
+        # (0.75, 0.75, 1.0, 0.0, 0.0),
+        # (0.75, 0.75, 1.0, 1.0, 1.0),
+
+        (0.70, 0.70, 1.0, 0.0, 0.0),
+        (0.70, 0.70, 1.0, 1.0, 1.0),
+
         (0.80, 0.80, 1.0, 0.0, 0.0),
         (0.80, 0.80, 1.0, 1.0, 1.0),
-        (0.90, 0.90, 1.0, 0.0, 0.0),
-        (0.90, 0.90, 1.0, 1.0, 1.0),
-        (0.90, 0.90, 1.0, 1.0, 0.0),
+
+        (0.85, 0.85, 1.0, 0.0, 0.0),
+        (0.85, 0.85, 1.0, 1.0, 1.0),
         ]:
         train_params.k_p1 = k_p1
         train_params.k_p2 = k_p2

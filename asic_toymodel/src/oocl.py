@@ -306,7 +306,8 @@ def train_phase2(
             model_name = kwargs.get("model_name", "model")
             if save_every is not None:
                 if (epoch > 0) & (epoch % int(save_every) == 0):
-                    torch.save(model.state_dict(), os.path.join(dir_models, f"{model_name}_{epoch:010}.pt"))
+                    ts_start = kwargs.get("ts_start_training", 0)
+                    torch.save(model.state_dict(), os.path.join(dir_models, f"{model_name}.{ts_start}.{epoch:010}.pt"))
             early_stop_valid_loss = kwargs.get("early_stop_valid_loss", None)
             # if early_stop_valid_loss is not None and valid_loss < early_stop_valid_loss:
             #     logging.info(f"Early stopping due to valid loss limit of {early_stop_valid_loss} at epoch {epoch}")
@@ -377,7 +378,6 @@ if __name__ == "__main__":
             valid_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, valid2_vv)
 
             loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
-
             ts_start_training = time.time()
             wandb.init(
                 # set the wandb project where this run will be logged
@@ -408,6 +408,7 @@ if __name__ == "__main__":
                     valid_loader_phase1, valid_loader_phase2,
                     loader_linkages,
                     train_params.n_steps, model_name=f"{name}_phase2",
+                    ts_start_training=ts_start_training,
                     **asdict(train_params), **asdict(data_params),
                 )
             except KeyboardInterrupt:
@@ -415,6 +416,8 @@ if __name__ == "__main__":
                 #  do not wandb.finish() on purpose
                 raise KeyboardInterrupt
             ts_finish_training = time.time()
+            fpath_model = os.path.join(dir_models, f"{name}.{ts_start_training}.final.pt")
             logging.info(f"training n_layers={model.cfg.n_layers} took {(ts_finish_training - ts_start_training)//60} minutes")
-            torch.save(model.state_dict(), os.path.join(dir_models, name + ".pt"))
+            logging.info(f"saving model to {fpath_model}")
+            torch.save(model.state_dict(), fpath_model)
             wandb.finish()

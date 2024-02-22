@@ -51,6 +51,7 @@ class Tokens:
 @dataclass
 class TrainParams:
     n_steps: int = 5e4
+    n_repetitions: int = 1  # how many times to train the same loop
     batch_size: int = 2**8
     lr: float = 1.4e-3
     wd: float = 0.1
@@ -337,120 +338,83 @@ if __name__ == "__main__":
 
     cfg = HookedTransformerConfig(**transformer_config)
     # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
-    for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
-        # (0.10, 0.75, 1.0, 1.0, 1.0),
-        # (0.10, 0.90, 1.0, 1.0, 1.0),
-        # (0.10, 0.90, 1.0, 1.0, 0.0),
-        # (0.80, 0.80, 1.0, 0.0, 0.0),
-        # (0.80, 0.80, 1.0, 1.0, 1.0),
-        # (0.80, 0.80, 1.0, 1.0, 0.0),
+    for _ in range(train_params.n_repetitions):
+        for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
+            (0.60, 0.60, 1.0, 0.0, 0.0),
+            (0.60, 0.60, 1.0, 1.0, 0.0),
+            (0.60, 0.60, 1.0, 1.0, 1.0),
+            ]:
+            train_params.k_p1 = k_p1
+            train_params.k_p2 = k_p2
+            train_params.k_ln = k_ln
 
-        # (0.50, 0.50, 1.0, 0.0, 0.0),
-        # (0.50, 0.50, 1.0, 1.0, 1.0),
-
-        # (0.82, 0.82, 1.0, 1.0, 1.0),
-        # (0.82, 0.82, 1.0, 1.0, 0.0),
-        #
-        # (0.85, 0.85, 1.0, 1.0, 1.0),
-        # (0.85, 0.85, 1.0, 1.0, 0.0),
-        #
-        # (0.87, 0.87, 1.0, 1.0, 1.0),
-        # (0.87, 0.87, 1.0, 1.0, 0.0),
-        #
-        # (0.90, 0.90, 1.0, 1.0, 1.0),
-        # (0.90, 0.90, 1.0, 1.0, 0.0),
-
-        # (0.50, 0.50, 1.0, 0.0, 0.0),
-        # (0.50, 0.50, 1.0, 1.0, 1.0),
-
-        # (0.75, 0.75, 1.0, 0.0, 0.0),
-        # (0.75, 0.75, 1.0, 1.0, 1.0),
-
-        # (0.65, 0.65, 1.0, 0.0, 0.0),
-        # (0.65, 0.65, 1.0, 1.0, 1.0),
-
-        (0.65, 0.65, 1.0, 0.0, 0.0),
-        (0.65, 0.65, 1.0, 0.25, 0.25),
-
-        # (0.70, 0.70, 1.0, 0.0, 0.0),
-        # (0.70, 0.70, 1.0, 1.0, 1.0),
-        #
-        # (0.80, 0.80, 1.0, 0.0, 0.0),
-        # (0.80, 0.80, 1.0, 1.0, 1.0),
-        #
-        # (0.85, 0.85, 1.0, 0.0, 0.0),
-        # (0.85, 0.85, 1.0, 1.0, 1.0),
-        ]:
-        train_params.k_p1 = k_p1
-        train_params.k_p2 = k_p2
-        train_params.k_ln = k_ln
-
-        x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
-            mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase1,
-        )
-        x_vv, y_vv, z_vv, train2_vv, valid2_vv = make_tbl_mask(
-            mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase2,
-        )
-
-        logging.info(
-            f"dataset has "
-            f"{train_vv.sum().item()} training examples and "
-            f"{valid_vv.sum().item()} validation examples."
-        )
-        model = HookedTransformer(cfg)
-        name = (
-            f"oocl_{data_params.operation}_{data_params.mod}_"
-            f"{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}_"
-            f"{round(train_params.k_p1, 1)}_{round(train_params.k_p2, 1)}_{round(train_params.k_ln, 1)}"
+            x_vv, y_vv, z_vv, train_vv, valid_vv = make_tbl_mask(
+                mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase1,
             )
-        logging.info(f"model / run named: {name}")
-        train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
-        valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
-
-        x2_vv = x_vv + data_params.mod
-        y2_vv = y_vv + data_params.mod
-        z2_vv = z_vv + data_params.mod
-        train_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, train2_vv)
-        valid_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, valid2_vv)
-
-        loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
-
-        wandb.init(
-            # set the wandb project where this run will be logged
-            project="oocl",
-            entity=os.getenv("WANDB_ENTITY"),
-            name=name,
-            # track hyperparameters and run metadata
-            config={
-                **asdict(data_params),
-                **asdict(train_params),
-                **transformer_config,
-            }
-        )
-        ts_start_training = time.time()
-        # try:
-        #     train_phase1(
-        #         model, train_loader_phase1, valid_loader_phase1, train_params.n_steps, model_name=f"{name}_phase1",
-        #         **asdict(train_params), **asdict(data_params),
-        #     )
-        # except KeyboardInterrupt:
-        #     torch.save(model.state_dict(), os.path.join(dir_models, "phase1_interrupted.pt"))
-        #     #  do not wandb.finish() on purpose
-        #     raise KeyboardInterrupt
-        try:
-            train_phase2(
-                model, 
-                train_loader_phase1, train_loader_phase2, 
-                valid_loader_phase1, valid_loader_phase2, 
-                loader_linkages, 
-                train_params.n_steps, model_name=f"{name}_phase2",
-                **asdict(train_params), **asdict(data_params),
+            _, _, _, train2_vv, valid2_vv = make_tbl_mask(
+                mod=data_params.mod, method=data_params.operation, frac_held_out=frac_held_out_phase2,
             )
-        except KeyboardInterrupt:
-            torch.save(model.state_dict(), os.path.join(dir_models, "phase2_interrupted.pt"))
-            #  do not wandb.finish() on purpose
-            raise KeyboardInterrupt
-        ts_finish_training = time.time()
-        logging.info(f"training n_layers={model.cfg.n_layers} took {(ts_finish_training - ts_start_training)//60} minutes")
-        torch.save(model.state_dict(), os.path.join(dir_models, name + ".pt"))
-        wandb.finish()
+
+            logging.info(
+                f"dataset has "
+                f"{train_vv.sum().item()} training examples and "
+                f"{valid_vv.sum().item()} validation examples."
+            )
+            model = HookedTransformer(cfg)
+            name = (
+                f"oocl_{data_params.operation}_{data_params.mod}_"
+                f"{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}_"
+                f"{round(train_params.k_p1, 1)}_{round(train_params.k_p2, 1)}_{round(train_params.k_ln, 1)}"
+                )
+            logging.info(f"model / run named: {name}")
+            train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
+            valid_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, valid_vv)
+
+            x2_vv = x_vv + data_params.mod
+            y2_vv = y_vv + data_params.mod
+            z2_vv = z_vv + data_params.mod
+            train_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, train2_vv)
+            valid_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, valid2_vv)
+
+            loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
+
+            ts_start_training = time.time()
+            wandb.init(
+                # set the wandb project where this run will be logged
+                project="oocl",
+                entity=os.getenv("WANDB_ENTITY"),
+                name=name,
+                # track hyperparameters and run metadata
+                config={
+                    "ts_start": ts_start_training,  # use to map between model files and wandb runs
+                    **asdict(data_params),
+                    **asdict(train_params),
+                    **transformer_config,
+                }
+            )
+            # try:
+            #     train_phase1(
+            #         model, train_loader_phase1, valid_loader_phase1, train_params.n_steps, model_name=f"{name}_phase1",
+            #         **asdict(train_params), **asdict(data_params),
+            #     )
+            # except KeyboardInterrupt:
+            #     torch.save(model.state_dict(), os.path.join(dir_models, "phase1_interrupted.pt"))
+            #     #  do not wandb.finish() on purpose
+            #     raise KeyboardInterrupt
+            try:
+                train_phase2(
+                    model,
+                    train_loader_phase1, train_loader_phase2,
+                    valid_loader_phase1, valid_loader_phase2,
+                    loader_linkages,
+                    train_params.n_steps, model_name=f"{name}_phase2",
+                    **asdict(train_params), **asdict(data_params),
+                )
+            except KeyboardInterrupt:
+                torch.save(model.state_dict(), os.path.join(dir_models, "phase2_interrupted.pt"))
+                #  do not wandb.finish() on purpose
+                raise KeyboardInterrupt
+            ts_finish_training = time.time()
+            logging.info(f"training n_layers={model.cfg.n_layers} took {(ts_finish_training - ts_start_training)//60} minutes")
+            torch.save(model.state_dict(), os.path.join(dir_models, name + ".pt"))
+            wandb.finish()

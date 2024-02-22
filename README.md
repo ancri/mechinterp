@@ -16,4 +16,4 @@
 - the training loss is the sum of 3 losses: `k1 * loss_op1 + k2 * loss_op2 + k3 * loss_linkages`, where k1, k2, and k3 are coefficients, loss_op1 is the loss on the first binary op table and loss_op2 is the loss on the second binary table, and loss_linkages is the loss on the linkages
 - by tuning knobs k1, k2 and k3 we can allow the model to learn via the linkages
 - what we would like ideally is to find a configuration where we hold out a certain fraction of data such that with (k1, k2, k3) set to (1, 0, 0) the model can't train, but with (1, 1, 1) the model does train
-- the naming of models in wandb is: oocl_ssq_p_holdout1_holdout2_k1_k2_k3 where holdout1 is the fraction held out from binary op table 1, holdout2 is the fraction held out from binary op table 2, and the rest have already been explained
+- the naming of models in wandb is: `oocl_ssq_p_holdout1_holdout2_k1_k2_k3` where holdout1 is the fraction held out from binary op table 1, holdout2 is the fraction held out from binary op table 2, and the rest have already been explained

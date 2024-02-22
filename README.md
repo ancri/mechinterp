@@ -17,3 +17,11 @@
 - by tuning knobs k1, k2 and k3 we can allow the model to learn via the linkages
 - what we would like ideally is to find a configuration where we hold out a certain fraction of data such that with (k1, k2, k3) set to (1, 0, 0) the model can't train, but with (1, 1, 1) the model does train
 - the naming of models in wandb is: `oocl_ssq_p_holdout1_holdout2_k1_k2_k3` where holdout1 is the fraction held out from binary op table 1, holdout2 is the fraction held out from binary op table 2, and the rest have already been explained
+
+## Gotchas:
+- if you are getting a weird CUDA error, make sure this portion of the code is correctly updated to reflect the size of your vocab:
+```
+    transformer_config.update(dict(
+        d_vocab=2 * data_params.mod + 4,  # originals, aliases, and 4 special tokens: end, random, not-random, define
+    ))
+```

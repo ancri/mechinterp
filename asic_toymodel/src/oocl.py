@@ -92,6 +92,9 @@ def loss_fn_linkages(logits, tokens):
 
 
 def make_tbl_mask(mod=17, method="sum", frac_held_out=0.05):
+    # Todo: 
+    #   this seems very slow for large values of mod
+    #   perhaps do it in numpy and move to gpu at the end 
     tbl_vv = torch.empty((mod, mod), dtype=torch.long)
     nv = mod
     for v0 in range(nv):
@@ -378,7 +381,7 @@ if __name__ == "__main__":
             valid_loader_phase2 = make_data(train_params.batch_size, x2_vv, y2_vv, z2_vv, valid2_vv)
 
             loader_linkages = make_data_linkage(train_params.batch_size, data_params.mod)
-            ts_start_training = time.time()
+            ts_start_training = int(time.time())
             wandb.init(
                 # set the wandb project where this run will be logged
                 project="oocl",
@@ -387,6 +390,8 @@ if __name__ == "__main__":
                 # track hyperparameters and run metadata
                 config={
                     "ts_start": ts_start_training,  # use to map between model files and wandb runs
+                    "frac1": frac_held_out_phase1,
+                    "frac2": frac_held_out_phase2,
                     **asdict(data_params),
                     **asdict(train_params),
                     **transformer_config,

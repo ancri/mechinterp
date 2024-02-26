@@ -51,7 +51,7 @@ class Tokens:
 @dataclass
 class TrainParams:
     n_steps: int = 5e4
-    n_repetitions: int = 1  # how many times to train the same loop
+    n_repetitions: int = 10  # how many times to train the same loop
     batch_size: int = 2**8
     lr: float = 1.4e-3
     wd: float = 0.1
@@ -341,12 +341,16 @@ if __name__ == "__main__":
     Path(dir_models).mkdir(exist_ok=True, parents=True)
 
     cfg = HookedTransformerConfig(**transformer_config)
-    # model.load_state_dict(torch.load(os.path.join(dir_models, "interrupted.pt")))
-    for _ in range(train_params.n_repetitions):
+    for i_repetition in range(train_params.n_repetitions):
         for frac_held_out_phase1, frac_held_out_phase2, k_p1, k_p2, k_ln in [
-            (0.60, 0.60, 1.0, 0.0, 0.0),
-            (0.60, 0.60, 1.0, 1.0, 0.0),
-            (0.60, 0.60, 1.0, 1.0, 1.0),
+            # (0.85, 0.85, 0.1, 1.0, 0.0),
+            # (0.85, 0.85, 0.1, 1.0, 0.1),
+
+            (0.90, 0.90, 0.1, 1.0, 0.0),
+            # (0.90, 0.90, 0.1, 1.0, 0.1),
+
+            # (0.95, 0.95, 0.1, 1.0, 0.0),
+            # (0.95, 0.95, 0.1, 1.0, 0.1),
             ]:
             train_params.k_p1 = k_p1
             train_params.k_p2 = k_p2
@@ -365,10 +369,18 @@ if __name__ == "__main__":
                 f"{valid_vv.sum().item()} validation examples."
             )
             model = HookedTransformer(cfg)
+            fname_model_warmup = "oocl_ssq_997_0.6_0.6_1.0_0.0_0.0_phase2.1708650271.5631144.0000040000.pt"
+            if i_repetition % 2 == 0:
+                model.load_state_dict(torch.load(os.path.join(dir_models, fname_model_warmup)))
+                warmup_model = fname_model_warmup
+            else:
+                warmup_model = None
+            is_warmup = "wrm" if warmup_model is not None else "nowrm"
             name = (
-                f"oocl_{data_params.operation}_{data_params.mod}_"
-                f"{round(frac_held_out_phase1, 2)}_{round(frac_held_out_phase2, 2)}_"
-                f"{round(train_params.k_p1, 1)}_{round(train_params.k_p2, 1)}_{round(train_params.k_ln, 1)}"
+                f"oocl_{data_params.mod}_"
+                f"{round(frac_held_out_phase1, 2)}_"
+                f"{round(train_params.k_p1, 1)}_{round(train_params.k_p2, 1)}_{round(train_params.k_ln, 1)}_"
+                f"{is_warmup}"
                 )
             logging.info(f"model / run named: {name}")
             train_loader_phase1 = make_data(train_params.batch_size, x_vv, y_vv, z_vv, train_vv)
@@ -392,6 +404,7 @@ if __name__ == "__main__":
                     "ts_start": ts_start_training,  # use to map between model files and wandb runs
                     "frac1": frac_held_out_phase1,
                     "frac2": frac_held_out_phase2,
+                    "warmup_model": warmup_model,
                     **asdict(data_params),
                     **asdict(train_params),
                     **transformer_config,

@@ -1,4 +1,9 @@
 # AISC Out-Of-Context Interpretability
+Usage:
+```
+$ cd asic_toymodel/src
+$ python oocl.py
+```
 [Feb 17, 2024] description of experiment in asic_toymodel/src/oocl.py  
 - the idea is to create a setup where the task is much more easily completed if a connection is made between two (mutually out of context) sections of data
 - the task performed is modular arithmetic, specifically `(x^2 + y^2) mod p`, where p is a prime

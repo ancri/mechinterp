@@ -1,3 +1,4 @@
+# Adapted from train_mod.py by Luan Fletcher (github.com/fletchel) in our AISC team's private repo, with local modifications.
 import logging
 import torch
 import wandb

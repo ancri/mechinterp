@@ -162,3 +162,10 @@ cython_debug/
 **/wandb/**
 **/models/**
 nohup.out
+
+# local-only files
+.idea/
+.python-version
+local/
+RESOURCES.md
+docs/agent_logs*

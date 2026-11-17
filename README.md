@@ -103,3 +103,7 @@ The figures and tables above come from `results/make_figures.py`, which reads th
 ## Credits
 
 This work was done during AI Safety Camp 2024 with the out-of-context learning team. `oocl_luan.py` and `train_mod.py` are adapted from Luan Fletcher's code.
+
+## License
+
+MIT (see [LICENSE](LICENSE)). The exceptions are `aisc_toymodel/src/oocl_luan.py` and `aisc_toymodel/src/train_mod.py`: they are adapted from Luan Fletcher's code and are not covered by this license.

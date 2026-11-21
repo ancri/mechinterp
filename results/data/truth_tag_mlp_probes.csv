@@ -1,0 +1,226 @@
+point,target,config,acc,seed
+embedding,z*,T->T,0.023598819971084595,0
+embedding,z*,T->F,0.023598819971084595,0
+embedding,z*,F->F,0.023598819971084595,0
+embedding,z*,T->T shuffled,0.023598819971084595,0
+embedding,z*,F->F shuffled,0.023598819971084595,0
+embedding,x,T->T,0.005478297360241413,0
+embedding,x,T->F,0.005478297360241413,0
+embedding,x,F->F,0.005478297360241413,0
+embedding,x,T->T shuffled,0.005478297360241413,0
+embedding,x,F->F shuffled,0.005478297360241413,0
+embedding,y,T->T,0.005478297360241413,0
+embedding,y,T->F,0.005478297360241413,0
+embedding,y,F->F,0.005478297360241413,0
+embedding,y,T->T shuffled,0.005478297360241413,0
+embedding,y,F->F shuffled,0.005478297360241413,0
+after layer 0,z*,T->T,0.999578595161438,0
+after layer 0,z*,T->F,0.17699114978313446,0
+after layer 0,z*,F->F,0.991571843624115,0
+after layer 0,z*,T->T shuffled,0.007163927424699068,0
+after layer 0,z*,F->F shuffled,0.005056890193372965,0
+after layer 0,x,T->T,0.7505267858505249,0
+after layer 0,x,T->F,0.08554572612047195,0
+after layer 0,x,F->F,0.7180783748626709,0
+after layer 0,x,T->T shuffled,0.006321112625300884,0
+after layer 0,x,F->F shuffled,0.0067425197921693325,0
+after layer 0,y,T->T,0.6788874864578247,0
+after layer 0,y,T->F,0.06658238172531128,0
+after layer 0,y,F->F,0.6337968707084656,0
+after layer 0,y,T->T shuffled,0.0139064472168684,0
+after layer 0,y,F->F shuffled,0.008006742224097252,0
+after layer 1,z*,T->T,1.0,0
+after layer 1,z*,T->F,0.01053518708795309,0
+after layer 1,z*,F->F,0.991571843624115,0
+after layer 1,z*,T->T shuffled,0.005899704992771149,0
+after layer 1,z*,F->F shuffled,0.007163927424699068,0
+after layer 1,x,T->T,0.6481247544288635,0
+after layer 1,x,T->F,0.0067425197921693325,0
+after layer 1,x,F->F,0.8086810111999512,0
+after layer 1,x,T->T shuffled,0.008428149856626987,0
+after layer 1,x,F->F shuffled,0.0067425197921693325,0
+after layer 1,y,T->T,0.6072481870651245,0
+after layer 1,y,T->F,0.013063632883131504,0
+after layer 1,y,F->F,0.7749683856964111,0
+after layer 1,y,T->T shuffled,0.008428149856626987,0
+after layer 1,y,F->F shuffled,0.007163927424699068,0
+embedding,z*,T->T,0.021088147535920143,1
+embedding,z*,T->F,0.021088147535920143,1
+embedding,z*,F->F,0.021088147535920143,1
+embedding,z*,T->T shuffled,0.021088147535920143,1
+embedding,z*,F->F shuffled,0.021088147535920143,1
+embedding,x,T->T,0.004639392718672752,1
+embedding,x,T->F,0.004639392718672752,1
+embedding,x,F->F,0.004639392718672752,1
+embedding,x,T->T shuffled,0.004639392718672752,1
+embedding,x,F->F shuffled,0.004639392718672752,1
+embedding,y,T->T,0.004639392718672752,1
+embedding,y,T->F,0.004639392718672752,1
+embedding,y,F->F,0.004639392718672752,1
+embedding,y,T->T shuffled,0.004639392718672752,1
+embedding,y,F->F shuffled,0.004639392718672752,1
+after layer 0,z*,T->T,1.0,1
+after layer 0,z*,T->F,0.008435259573161602,1
+after layer 0,z*,F->F,0.9046815633773804,1
+after layer 0,z*,T->T shuffled,0.0029523407574743032,1
+after layer 0,z*,F->F shuffled,0.003795866621658206,1
+after layer 0,x,T->T,0.6689160466194153,1
+after layer 0,x,T->F,0.010544073767960072,1
+after layer 0,x,F->F,0.7085617780685425,1
+after layer 0,x,T->T shuffled,0.008013496175408363,1
+after layer 0,x,F->F shuffled,0.008435259573161602,1
+after layer 0,y,T->T,0.5212990045547485,1
+after layer 0,y,T->F,0.009278785437345505,1
+after layer 0,y,F->F,0.5221425294876099,1
+after layer 0,y,T->T shuffled,0.010122311301529408,1
+after layer 0,y,F->F shuffled,0.008435259573161602,1
+after layer 1,z*,T->T,1.0,1
+after layer 1,z*,T->F,0.009278785437345505,1
+after layer 1,z*,F->F,0.7486292719841003,1
+after layer 1,z*,T->T shuffled,0.008435259573161602,1
+after layer 1,z*,F->F shuffled,0.005482918582856655,1
+after layer 1,x,T->T,0.47574862837791443,1
+after layer 1,x,T->F,0.0059046815149486065,1
+after layer 1,x,F->F,0.8658793568611145,1
+after layer 1,x,T->T shuffled,0.009700547903776169,1
+after layer 1,x,F->F shuffled,0.008435259573161602,1
+after layer 1,y,T->T,0.38928723335266113,1
+after layer 1,y,T->F,0.008435259573161602,1
+after layer 1,y,F->F,0.9742724299430847,1
+after layer 1,y,T->T shuffled,0.005482918582856655,1
+after layer 1,y,F->F shuffled,0.007591733243316412,1
+embedding,z*,T->T,0.023569023236632347,2
+embedding,z*,T->F,0.023569023236632347,2
+embedding,z*,F->F,0.023569023236632347,2
+embedding,z*,T->T shuffled,0.023569023236632347,2
+embedding,z*,F->F shuffled,0.023569023236632347,2
+embedding,x,T->T,0.005050505045801401,2
+embedding,x,T->F,0.005050505045801401,2
+embedding,x,F->F,0.005050505045801401,2
+embedding,x,T->T shuffled,0.005050505045801401,2
+embedding,x,F->F shuffled,0.005050505045801401,2
+embedding,y,T->T,0.005050505045801401,2
+embedding,y,T->F,0.005050505045801401,2
+embedding,y,F->F,0.005050505045801401,2
+embedding,y,T->T shuffled,0.005050505045801401,2
+embedding,y,F->F shuffled,0.005050505045801401,2
+after layer 0,z*,T->T,1.0,2
+after layer 0,z*,T->F,0.9696969985961914,2
+after layer 0,z*,F->F,0.999579131603241,2
+after layer 0,z*,T->T shuffled,0.00631313119083643,2
+after layer 0,z*,F->F shuffled,0.004629629664123058,2
+after layer 0,x,T->T,0.807659924030304,2
+after layer 0,x,T->F,0.561026930809021,2
+after layer 0,x,F->F,0.7878788113594055,2
+after layer 0,x,T->T shuffled,0.006734006572514772,2
+after layer 0,x,F->F shuffled,0.00631313119083643,2
+after layer 0,y,T->T,0.5622895359992981,2
+after layer 0,y,T->F,0.3930976390838623,2
+after layer 0,y,F->F,0.5555555820465088,2
+after layer 0,y,T->T shuffled,0.010521885938942432,2
+after layer 0,y,F->F shuffled,0.011363636702299118,2
+after layer 1,z*,T->T,1.0,2
+after layer 1,z*,T->F,0.01262626238167286,2
+after layer 1,z*,F->F,1.0,2
+after layer 1,z*,T->T shuffled,0.008417508564889431,2
+after layer 1,z*,F->F shuffled,0.007996632717549801,2
+after layer 1,x,T->T,0.7302188277244568,2
+after layer 1,x,T->F,0.01262626238167286,2
+after layer 1,x,F->F,0.9617003202438354,2
+after layer 1,x,T->T shuffled,0.010942760854959488,2
+after layer 1,x,F->F shuffled,0.010942760854959488,2
+after layer 1,y,T->T,0.5618686676025391,2
+after layer 1,y,T->F,0.007996632717549801,2
+after layer 1,y,F->F,0.7954545617103577,2
+after layer 1,y,T->T shuffled,0.009259259328246117,2
+after layer 1,y,F->F shuffled,0.011784511618316174,2
+embedding,z*,T->T,0.016441822052001953,3
+embedding,z*,T->F,0.016441822052001953,3
+embedding,z*,F->F,0.016441822052001953,3
+embedding,z*,T->T shuffled,0.016441822052001953,3
+embedding,z*,F->F shuffled,0.016441822052001953,3
+embedding,x,T->T,0.0054806070402264595,3
+embedding,x,T->F,0.0054806070402264595,3
+embedding,x,F->F,0.0054806070402264595,3
+embedding,x,T->T shuffled,0.0054806070402264595,3
+embedding,x,F->F shuffled,0.0054806070402264595,3
+embedding,y,T->T,0.0054806070402264595,3
+embedding,y,T->F,0.0054806070402264595,3
+embedding,y,F->F,0.0054806070402264595,3
+embedding,y,T->T shuffled,0.0054806070402264595,3
+embedding,y,F->F shuffled,0.0054806070402264595,3
+after layer 0,z*,T->T,1.0,3
+after layer 0,z*,T->F,0.9388701319694519,3
+after layer 0,z*,F->F,0.9945194125175476,3
+after layer 0,z*,T->T shuffled,0.005902192089706659,3
+after layer 0,z*,F->F shuffled,0.008853288367390633,3
+after layer 0,x,T->T,0.8608769178390503,3
+after layer 0,x,T->F,0.36804383993148804,3
+after layer 0,x,F->F,0.8676222562789917,3
+after layer 0,x,T->T shuffled,0.008010118268430233,3
+after layer 0,x,F->F shuffled,0.011804384179413319,3
+after layer 0,y,T->T,0.6247891783714294,3
+after layer 0,y,T->F,0.1593591868877411,3
+after layer 0,y,F->F,0.6205733418464661,3
+after layer 0,y,T->T shuffled,0.005902192089706659,3
+after layer 0,y,F->F shuffled,0.008010118268430233,3
+after layer 1,z*,T->T,1.0,3
+after layer 1,z*,T->F,0.012647555209696293,3
+after layer 1,z*,F->F,0.9978920817375183,3
+after layer 1,z*,T->T shuffled,0.0029510960448533297,3
+after layer 1,z*,F->F shuffled,0.008431702852249146,3
+after layer 1,x,T->T,0.7963743805885315,3
+after layer 1,x,T->F,0.009696458466351032,3
+after layer 1,x,F->F,0.978499174118042,3
+after layer 1,x,T->T shuffled,0.008010118268430233,3
+after layer 1,x,F->F shuffled,0.013069139793515205,3
+after layer 1,y,T->T,0.5370994806289673,3
+after layer 1,y,T->F,0.009696458466351032,3
+after layer 1,y,F->F,0.8317875266075134,3
+after layer 1,y,T->T shuffled,0.00927487388253212,3
+after layer 1,y,F->F shuffled,0.012225969694554806,3
+embedding,z*,T->T,0.013468013145029545,4
+embedding,z*,T->F,0.013468013145029545,4
+embedding,z*,F->F,0.013468013145029545,4
+embedding,z*,T->T shuffled,0.013468013145029545,4
+embedding,z*,F->F shuffled,0.013468013145029545,4
+embedding,x,T->T,0.005471380427479744,4
+embedding,x,T->F,0.005471380427479744,4
+embedding,x,F->F,0.005471380427479744,4
+embedding,x,T->T shuffled,0.005471380427479744,4
+embedding,x,F->F shuffled,0.005471380427479744,4
+embedding,y,T->T,0.005471380427479744,4
+embedding,y,T->F,0.005471380427479744,4
+embedding,y,F->F,0.005471380427479744,4
+embedding,y,T->T shuffled,0.005471380427479744,4
+embedding,y,F->F shuffled,0.005471380427479744,4
+after layer 0,z*,T->T,1.0,4
+after layer 0,z*,T->F,0.011784511618316174,4
+after layer 0,z*,F->F,0.024410774931311607,4
+after layer 0,z*,T->T shuffled,0.008838383480906487,4
+after layer 0,z*,F->F shuffled,0.007575757801532745,4
+after layer 0,x,T->T,0.7962962985038757,4
+after layer 0,x,T->F,0.007575757801532745,4
+after layer 0,x,F->F,0.7685185074806213,4
+after layer 0,x,T->T shuffled,0.011784511618316174,4
+after layer 0,x,F->F shuffled,0.004629629664123058,4
+after layer 0,y,T->T,0.8093434572219849,4
+after layer 0,y,T->F,0.008417508564889431,4
+after layer 0,y,F->F,0.7310606241226196,4
+after layer 0,y,T->T shuffled,0.007154881954193115,4
+after layer 0,y,F->F shuffled,0.009680134244263172,4
+after layer 1,z*,T->T,1.0,4
+after layer 1,z*,T->F,0.008838383480906487,4
+after layer 1,z*,F->F,0.048821549862623215,4
+after layer 1,z*,T->T shuffled,0.007154881954193115,4
+after layer 1,z*,F->F shuffled,0.005050505045801401,4
+after layer 1,x,T->T,0.36910775303840637,4
+after layer 1,x,T->F,0.007575757801532745,4
+after layer 1,x,F->F,0.8615319728851318,4
+after layer 1,x,T->T shuffled,0.009259259328246117,4
+after layer 1,x,F->F shuffled,0.005471380427479744,4
+after layer 1,y,T->T,0.4154040515422821,4
+after layer 1,y,T->F,0.009680134244263172,4
+after layer 1,y,F->F,0.8623737096786499,4
+after layer 1,y,T->T shuffled,0.012205387465655804,4
+after layer 1,y,F->F shuffled,0.010521885938942432,4

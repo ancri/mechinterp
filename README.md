@@ -1,12 +1,13 @@
 # Out-of-context learning in toy transformers
 
-These are small-transformer experiments I ran in February–March 2024 for an [AI Safety Camp](https://www.aisafety.camp/) project on out-of-context learning (OOCL). The question was whether a model trained on statements linking two sets of tokens ("alias *a* means *i*") uses those links to answer questions it never saw directly. I built three synthetic testbeds on modular arithmetic with [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens):
+These are small-transformer experiments I ran in February–March 2024 for an [AI Safety Camp](https://www.aisafety.camp/) project on out-of-context learning (OOCL). The question was whether a model trained on statements linking two sets of tokens ("alias *a* means *i*") uses those links to answer questions it never saw directly. I built three synthetic testbeds on modular arithmetic with [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens), and later added a follow-up to the third:
 
 1. **Alias links** (`oocl.py`) is the main experiment. It has two copies of the same arithmetic table on disjoint tokens, plus training data linking each token to its copy.
 2. **Grokking baseline** (`grokking.py`) measures how much of a table a model needs to see before it generalizes.
 3. **Truth vs. lies** (`truth_lies.py`) asks what happens to a computation tagged "true" when the training mix shifts toward noise tagged "false".
+4. **How the model uses the truth tag** (`truth_lies_mech.py`) is a follow-up to 3 from November 2026. It looks inside the model to see how it switches between the tags.
 
-Apart from a cleanup, the code is as it was in 2024. I added the results below in November 2026, using the training curves logged to W&B at the time (see [`results/`](results)).
+Apart from a cleanup and the follow-up in result 4, the code is as it was in 2024. I added the results below in November 2026, using the training curves logged to W&B at the time (see [`results/`](results)).
 
 ## Results
 
@@ -75,6 +76,44 @@ The script is `aisc_toymodel/src/truth_lies.py`. Every (x² + y²) mod 109 examp
 
 With no `T` examples in phase 2, the model lost the `T`-tagged arithmetic within 1,000 steps. Loss climbed back to chance (ln 109 ≈ 4.69) in every run, with 2, 4 and 8 layers. Nothing in phase 2 contradicts the `T` examples, but nothing rewards keeping them either. With 10% or more `T` examples, the model kept the arithmetic: end-of-phase-2 loss was 0.002–0.22 across 29 two-layer runs.
 
+### 4. How the model uses the truth tag (follow-up, November 2026)
+
+The script is `aisc_toymodel/src/truth_lies_mech.py`. It was run in November 2026 by a coding agent working under my direction. The question is how a model trained on both tags switches between them. Under `F`, is the answer still computed and then suppressed, or does the tag stop it from being computed? Without MLPs there are three candidate mechanisms. If the answer is computed under both tags, then under `F` either (H1a) a tag-dependent component inflates the residual stream so that the final LayerNorm shrinks the logits, or (H1b) some head writes against the answer. Otherwise (H2), attention moves to the tag and away from x and y, so the answer is never formed. The model is the 2-layer attention-only transformer from result 2 (d_model 128, 4 heads per layer, LayerNorm). It trains in a single phase on (x² + y²) mod 109: half the examples are `T x y = z` with the right z, and half are `F x y = z` with a uniformly random z. 20% of the (x, y) pairs never appear in training, and each is held out together with its mirror (y, x). The optimizer is the one in `truth_lies.py` (AdamW, lr 1e-3, weight decay 0.1, batch 64). Each of 5 seeds trained until its held-out `T` loss had stayed below 0.01 for 1,000 steps. All the measurements below use the held-out pairs and are read at the `=` position, with z* the right answer.
+
+| seed | steps | `T`: accuracy | `T`: loss | `F`: KL(uniform ‖ model) | `F`: mass on special tokens | `F`: z* is top choice | `F`: mean rank of z* | `F`: p(z*) × 109 |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 28.5k | 100.0% | 0.0035 | 0.0040 | 0.00% | 1.31% | 49.7 | 1.017 |
+| 1 | 43.8k | 100.0% | 0.0011 | 0.0033 | 0.00% | 1.10% | 53.8 | 1.003 |
+| 2 | 60.5k | 100.0% | 0.0077 | 0.0031 | 0.00% | 6.06% | 32.9 | 1.061 |
+| 3 | 40.9k | 99.9% | 0.0093 | 0.0051 | 0.00% | 0.76% | 52.2 | 1.009 |
+| 4 | 41.4k | 99.8% | 0.0084 | 0.0033 | 0.00% | 1.22% | 48.9 | 1.017 |
+| chance | | | | 0 | 0 | 0.92% | 55 | 1 |
+
+Every seed answers held-out `T` prompts correctly, and its output after `F` is close to flat. Only seed 2 leaks the answer noticeably.
+
+In four of the five seeds, the `F` tag mostly stops the answer from being computed. In all five, it also inflates the residual stream, so the final LayerNorm flattens whatever is left. In layer 0, `=` gives the `F` tag 49–94% of its attention (averaged over heads, by seed), against at most 11% for `T`. A linear probe reads z* from the residual stream after layer 0 in 64% of `T` prompts but only 4% of `F` prompts (chance is about 1%), even though x and y can still be read there (72% and 63%). Under `F`, the residual stream at `=` ends up 53–83 times larger than under `T`, and no head works against the answer. Every head's direct logit attribution under `F` is within 0.02 of zero, while under `T` the heads put z* 17–19 logits above the average number token.
+
+![Probe accuracy for z*, x and y at the = position after the embedding, layer 0 and layer 1, for probes trained and tested on each tag](results/figures/truth_tag_probes.png)
+
+The rules for labelling each seed were fixed before the analysis ran. H1a requires z* to be readable under `F` and the `T` run's LayerNorm scale to restore the answer. H1b requires z* to be readable, the scale not to restore it and some head to work against it. H2 requires z* to be unreadable and the `T` run's attention patterns to restore the answer. All 5 seeds get the same label, "none of the three", for these reasons:
+
+- **Probes.** After layer 1, a probe trained and tested on `F` reads z* in 13–27% of prompts in seeds 0, 1, 3 and 4, and 84% in seed 2. Only seed 2 passes the "readable" threshold (50%), and no seed is at the "unreadable" threshold (5%) or below it.
+- **LayerNorm swap.** Giving `F` runs the `T` run's final LayerNorm scale never restores the answer (0.7–7.7% accuracy). In this model the test can't tell rescaling apart from gating. The extra component also points along the number tokens' unembedding directions, so at the smaller scale it dominates the logits. log p(z*) then falls further, from −4.7 to between −5.8 and −14.6.
+- **Attention patterns.** Patching in the `T` run's patterns for the heads whose single-head patching effect exceeds 0.1 restores the answer in seeds 1 and 2 but not in seeds 0, 3 and 4. On a scale where the `F` run is 0 and the `T` run is 1, the scores are 1.00 and 0.85 against 0.09–0.12. Removing the tag's value vector from the same heads doesn't help either (−0.71 to +0.04).
+
+![Layer-0 attention from = by source under each tag, the size of the residual stream at =, and patching scores on F runs](results/figures/truth_tag_mechanism.png)
+
+The seeds differ mainly in where the residual stream is inflated. In seeds 1 and 2 it happens in layer 0, and patching the `T` attention patterns into layer 0 alone restores the answer fully (a check added after the first analysis). Seed 2 has the weakest gate, because three of its four layer-0 heads still give x and y 25–43% of their attention each. A single head that attends only to the tag does the inflating there, and patching that head's output at `=` brings the score back to 0.84. So in seed 2 the answer is mostly computed and then squashed, which is close to H1a. In seeds 0, 3 and 4 the inflation happens in layer 1. There, patching the attention patterns of all eight heads restores only 0.11–0.14. Also patching in the `T` run's layer-1 values at the tag position raises that to 0.92 in seed 4, but leaves seeds 0 and 3 at about 0.2. Those two seeds weren't traced further.
+
+**With MLPs.** The experiment was also repeated with an MLP in each layer (`--mlp`, the same 5 seeds, data in `truth_tag_mlp_*.csv`). The mechanism shifts toward computing the answer and then hiding it. In four of the five seeds, a probe trained and tested on `F` reads z* after layer 1 in 75–100% of prompts (5% in seed 4). In two of them, a probe trained on `T` already reads it under `F` after layer 0 (94% and 97%), so the answer is formed in the same way under both tags. The layer-0 gate is weaker: `=` gives the `F` tag 26–67% of its attention. As before, the residual stream at `=` is inflated (21–71 times), nothing works against the answer, and the LayerNorm swap fails. Patching in the `T` run's attention patterns together with its layer-1 value at the tag position restores the answer in four seeds (0.77–1.00) but not in seed 4 (0.22). By the rules, all 5 seeds are again "none of the three".
+
+Limitations:
+
+- This is one task and one held-out fraction, with 5 seeds of each model.
+- The thresholds that turn the rules into labels are a judgment call, and the probes are linear.
+- Picking heads by their single-head patching effect misses heads that act redundantly. The whole-layer patching was added after the first full analysis, so it is exploratory.
+- The stopping rule took 28.5k–60.5k steps, because held-out `T` loss kept spiking above 0.01 after accuracy reached 100%.
+
 ## Other code
 
 - `aisc_toymodel/src/toy_model.py` holds my first experiments (late January to early February 2024). These are small sequence tasks where one group of tokens lacks a relation that the other groups show (A→B and B→C, but no C→A), to see whether the model fills it in.
@@ -98,7 +137,18 @@ python oocl.py        # or grokking.py, truth_lies.py
 
 Settings live in the dataclasses at the top of each script and in the sweep loop at the bottom. Checkpoints are saved to `models/transformers/` under the working directory. If you get an opaque CUDA error, check that `d_vocab` matches the task's vocabulary; in `oocl.py` it is `2 * mod + 4`.
 
-The figures and tables above come from `results/make_figures.py`, which reads the training curves in `results/data/`. Those curves were exported from W&B with `results/export_wandb.py`, which needs access to the team's workspace.
+Apart from result 4, the figures and tables above come from `results/make_figures.py`, which reads the training curves in `results/data/`. Those curves were exported from W&B with `results/export_wandb.py`, which needs access to the team's workspace.
+
+`truth_lies_mech.py` (result 4) doesn't use W&B. Train each seed (one process per seed, on CPU), then run the analysis and draw the figures:
+
+```
+cd aisc_toymodel/src
+for s in 0 1 2 3 4; do python truth_lies_mech.py train --seed $s & done; wait
+python truth_lies_mech.py analyse    # writes results/data/truth_tag_*.csv
+python truth_lies_mech.py figures    # writes results/figures/truth_tag_*.png
+```
+
+Checkpoints go to `models/truth_tag/` under `aisc_toymodel/src`. On 8 CPU cores, with all five seeds training at once, each took 30–50 minutes, and the analysis took about 2 minutes per seed.
 
 ## Credits
 

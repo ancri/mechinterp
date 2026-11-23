@@ -1,13 +1,15 @@
 # Out-of-context learning in toy transformers
 
-These are small-transformer experiments I ran in February–March 2024 for an [AI Safety Camp](https://www.aisafety.camp/) project on out-of-context learning (OOCL). The question was whether a model trained on statements linking two sets of tokens ("alias *a* means *i*") uses those links to answer questions it never saw directly. I built three synthetic testbeds on modular arithmetic with [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens), and later added a follow-up to the third:
+These are small-transformer experiments I ran from late January to March 2024 for an [AI Safety Camp](https://www.aisafety.camp/) project on out-of-context learning (OOCL). The question was whether a model trained on statements linking two sets of tokens ("alias *a* means *i*") uses those links to answer questions it never saw directly. The tasks are synthetic, mostly modular arithmetic, and the models are built with [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens):
 
 1. **Alias links** (`oocl.py`) is the main experiment. It has two copies of the same arithmetic table on disjoint tokens, plus training data linking each token to its copy.
 2. **Grokking baseline** (`grokking.py`) measures how much of a table a model needs to see before it generalizes.
 3. **Truth vs. lies** (`truth_lies.py`) asks what happens to a computation tagged "true" when the training mix shifts toward noise tagged "false".
 4. **How the model uses the truth tag** (`truth_lies_mech.py`) is a follow-up to 3 from November 2026. It looks inside the model to see how it switches between the tags.
+5. **Missing link** (`toy_model.py`) was my first experiment. It asks whether a model infers a link that every group of tokens shows except one.
+6. **Reliable vs. unreliable definitions** (`oocl_luan.py`) is Luan Fletcher's setup, which I also ran. It asks whether a model makes more use of definitions whose tag was reliable earlier in training.
 
-Apart from a cleanup and the follow-up in result 4, the code is as it was in 2024. I added the results below in November 2026, using the training curves logged to W&B at the time (see [`results/`](results)).
+Apart from a cleanup and the follow-up in result 4, the code is as it was in 2024. I added the results below in November 2026, using the training curves logged to W&B at the time (see [`results/`](results)). Most toy-model runs never reached the W&B server, so their curves come from the run files W&B kept locally.
 
 ## Results
 
@@ -33,20 +35,36 @@ The model learns the links themselves: link loss ended at or below 0.012 in all 
 
 Accuracy was measured every 100 steps on a batch of 256 held-out problems, and "reaching 90%" means within 50k steps. For steps to 90%, links vs. no links gives a Mann–Whitney p of 0.19 for table 1 and 0.70 for table 2.
 
-Two follow-ups pointed the same way:
+The follow-ups below pointed the same way.
 
-- **Warm start** ([PR #1](https://github.com/ancri/mechinterp/pull/1), never merged). Starting from a model that had already learned table 1 made table 2 much easier: 49 of 51 runs reached 90%, against 27 of 51 from scratch. Adding a small link loss (k₃ = 0.1) made no consistent difference either way. These runs used k₁ = 0.1 and k₂ = 1. Each cell gives the runs reaching 90% held-out accuracy on table 2 and the median steps to get there:
+**Warm start** ([PR #1](https://github.com/ancri/mechinterp/pull/1), never merged). Starting from a model that had already learned table 1 made table 2 much easier: at 60–90% held out, 49 of 51 runs reached 90%, against 27 of 51 from scratch. Adding a small link loss (k₃ = 0.1) made no consistent difference either way. These runs used k₁ = 0.1 and k₂ = 1.
 
-  | held out | from scratch | from scratch + links | warm start | warm start + links |
-  |---|---|---|---|---|
-  | 60% | 1/5, 7.5k | 3/5, 8.9k | 5/5, 3.2k | 5/5, 5.1k |
-  | 75% | 2/5, 8.3k | 5/5, 8.5k | 5/5, 4.1k | 5/5, 4.6k |
-  | 80% | 4/5, 8.1k | 3/5, 9.2k | 5/5, 3.6k | 4/5, 5.4k |
-  | 85% | 2/7, 11.2k | 2/7, 11.3k | 7/7, 4.3k | 6/7, 5.7k |
-  | 90% | 5/6, 33.6k | 0/1 | 6/6, 6.8k | 1/1, 10.8k |
+![Steps until table 2 reached 90% held-out accuracy, from scratch vs. warm start, with and without the link loss](results/figures/oocl_warm_start.png)
 
-  Runs lasted 10k steps at 60–80% held out and up to 50k steps at 85–90%.
-- **p = 1999** (one run per setting, 50k steps). The only run that generalized was the one with links at 60% held out, which reached 96% on both tables. No setting generalized at 50% or 70% held out, so I read this as run-to-run variance rather than an effect of the links.
+Runs lasted 10k steps at 60–80% held out and 10k–50k steps at 85–95%. Each cell gives the runs reaching 90% held-out accuracy on table 2 and the median steps to get there:
+
+| held out | from scratch | from scratch + links | warm start | warm start + links |
+|---|---|---|---|---|
+| 60% | 1/5, 7.5k | 3/5, 8.9k | 5/5, 3.2k | 5/5, 5.1k |
+| 75% | 2/5, 8.3k | 5/5, 8.5k | 5/5, 4.1k | 5/5, 4.6k |
+| 80% | 4/5, 8.1k | 3/5, 9.2k | 5/5, 3.6k | 4/5, 5.4k |
+| 85% | 2/7, 11.2k | 2/7, 11.3k | 7/7, 4.3k | 6/7, 5.7k |
+| 90% | 5/6, 33.6k | 0/1 | 6/6, 6.8k | 1/1, 10.8k |
+| 95% | – | – | 0/1 | 0/1 |
+
+**Other moduli** (one run per setting):
+
+- **p = 1999** (50k steps). The only run that generalized was the one with links at 60% held out, which reached 96% on both tables. No setting generalized at 50% or 70% held out, so I read this as run-to-run variance rather than an effect of the links.
+- **p = 109** (100k steps). This was the first version of the experiment, and it logged held-out loss rather than accuracy. Here the links looked harmful: at 82–90% held out, each run with links ended with higher held-out loss on both tables than the matching run without. The first row below is the most direct test. Table 1 showed 90% of the facts held out from table 2, so the links could have filled most of them in. Instead, table 2's held-out loss ended at 15.3 with links and 12.3 without, both far above chance (ln 109 ≈ 4.7). Each cell gives held-out loss at the end of the run, for table 1 / table 2:
+
+  | held out (table 1 / table 2) | table 1 only | both tables, no links | both tables + links |
+  |---|---|---|---|
+  | 10% / 90% | – | 0.01 / 12.29 | 0.01 / 15.34 |
+  | 80% / 80% | 0.07 | – | 4.08 / 1.40 |
+  | 82% / 82% | – | 0.06 / 0.12 | 2.11 / 2.32 |
+  | 85% / 85% | – | 4.05 / 3.72 | 8.88 / 8.44 |
+  | 87% / 87% | – | 3.09 / 5.64 | 9.71 / 12.10 |
+  | 90% / 90% | 13.76 | 10.86 / 10.84 | 20.22 / 20.39 |
 
 ### 2. Grokking baseline
 
@@ -114,11 +132,35 @@ Limitations:
 - Picking heads by their single-head patching effect misses heads that act redundantly. The whole-layer patching was added after the first full analysis, so it is exploratory.
 - The stopping rule took 28.5k–60.5k steps, because held-out `T` loss kept spiking above 0.01 after accuracy reached 100%.
 
+### 5. A missing link was never inferred
+
+The script is `aisc_toymodel/src/toy_model.py`, from my first experiments (late January to early February 2024). Tokens come in groups of three, A, B and C. Every training sequence is a tag followed by a pair of tokens. For every group but one, the pairs are A → B, B → C and C → A, while group 0 only ever shows A → B and B → C. Some sequences are random pairs marked with a "random" tag, and the rest carry a "cyclic" tag. The test prompts the model with the cyclic tag and group 0's C, and checks whether it predicts A, the link that every other group shows.
+
+![Loss on the links seen in training, and probability of the held-out link, over training](results/figures/toy_model.png)
+
+The model learned the links it saw (loss below 0.01 in 14 of 17 runs) but never inferred C → A. The most probability any run put on A at a logged step was 44 times a uniform guess, or 0.37%, where applying the rule would mean close to 100%. The runs lasted 5k–2.4M steps, with 0–95% random sequences and 1,000 or 4,000 groups. The data file also holds an earlier sweep with untagged random pairs (the `noise_*` runs). It isn't plotted because those runs never learned even the links they saw: their training loss stayed above 1.4.
+
+### 6. Reliable vs. unreliable definitions
+
+The setup is Luan Fletcher's (`aisc_toymodel/src/oocl_luan.py`), modeled on [Krasheninnikov et al. (2023)](https://arxiv.org/abs/2310.15047). I ran it in March 2024 with local modifications. It fine-tunes a model pretrained on multiplication mod p. Each number below p gets a variable token. A definition pairs a variable with a number and carries one of two tags, reliable or unreliable. A question asks for d·x mod p, for a variable x and d ∈ {2, 3, 5, 6, 10, 15}. The numbers are split into four sets:
+
+| set | tag | definitions give | questions in training |
+|---|---|---|---|
+| 1 | reliable | the right value | yes |
+| 2 | unreliable | a wrong value | yes |
+| 3 | reliable | the right value | no |
+| 4 | unreliable | the right value | no |
+
+Phase 1 (1,000 epochs) trains on the definitions and questions for sets 1 and 2, holding out two questions per variable for testing. Phase 2 (500 epochs) trains on the definitions for sets 3 and 4, plus an equal amount of phase-1 data. Both phases mix in multiplication problems. In phase 1, only the reliable tag's definitions help answer questions. If the model picks that up, it should make more use of set 3's definitions than set 4's, even though both are right, and answer more questions about set 3.
+
+![Accuracy on held-out questions for the four sets over training, at mod 120 and mod 480](results/figures/definitions.png)
+
+At mod 120 (11 runs), the definitions alone took accuracy on sets 3 and 4 from about 5% to 20% and 16%. Set 3 ended ahead in 9 of 11 runs (Wilcoxon signed-rank p = 0.054). At mod 480 (13 runs), the definitions barely helped: accuracy went from about 1% to 2.6% and 2.1%, and set 3 was ahead in 8 of 13 runs (p = 0.11). So the difference points the way the reliable tag predicts, but the evidence is weak. Four pilot runs at mod 140 and 240 are in the data file but not plotted.
+
 ## Other code
 
-- `aisc_toymodel/src/toy_model.py` holds my first experiments (late January to early February 2024). These are small sequence tasks where one group of tokens lacks a relation that the other groups show (A→B and B→C, but no C→A), to see whether the model fills it in.
-- `aisc_toymodel/src/oocl_luan.py` and `train_mod.py` are Luan Fletcher's setup from our team's repo, with local modifications. The setup pretrains on multiplication mod 480, then fine-tunes on variable definitions tagged reliable or unreliable, plus questions about the defined variables.
-- `aisc_toymodel/scratch/` holds exploratory notebooks from February 2024. They were run out of order and are kept only for the record.
+- `aisc_toymodel/src/train_mod.py` pretrains a model on multiplication mod p for result 6. It is adapted from Luan Fletcher's code.
+- `aisc_toymodel/scratch/` holds exploratory notebooks from early 2024. They were run out of order and are kept only for the record.
 
 ## Running
 
@@ -137,7 +179,7 @@ python oocl.py        # or grokking.py, truth_lies.py
 
 Settings live in the dataclasses at the top of each script and in the sweep loop at the bottom. Checkpoints are saved to `models/transformers/` under the working directory. If you get an opaque CUDA error, check that `d_vocab` matches the task's vocabulary; in `oocl.py` it is `2 * mod + 4`.
 
-Apart from result 4, the figures and tables above come from `results/make_figures.py`, which reads the training curves in `results/data/`. Those curves were exported from W&B with `results/export_wandb.py`, which needs access to the team's workspace.
+Apart from result 4, the figures and tables above come from `results/make_figures.py`, which reads the training curves in `results/data/`. Those curves were exported with `results/export_wandb.py`. It needs access to the team's W&B workspace and, for the toy-model runs, the local W&B run files, which aren't in the repo.
 
 `truth_lies_mech.py` (result 4) doesn't use W&B. Train each seed (one process per seed, on CPU), then run the analysis and draw the figures:
 
